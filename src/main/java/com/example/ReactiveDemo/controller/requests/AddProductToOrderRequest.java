@@ -5,6 +5,7 @@ import lombok.Setter;
 
 import java.util.UUID;
 
+// Request object to add a product to a particular user's order based on ID match only
 @Getter
 @Setter
 public class AddProductToOrderRequest {

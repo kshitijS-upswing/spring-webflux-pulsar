@@ -17,18 +17,23 @@ public class UserControllerImpl implements UserController {
 
     private final UserService userService;
 
+    // CREATE USER
+    // POST /users (body)
     @Override
     @PostMapping
     public Mono<UserDTO> createUser(@RequestBody CreateUserRequest request) {
         return userService.createUser(request.getEmail());
     }
 
+    // GET USER
+    // POST /users/...
     @GetMapping("/{id}")
     public Mono<UserDTO> getUserById(@PathVariable UUID id) {
         return userService.findUserById(id);
     }
 
-
+    // GET USER
+    // POST /users/...
     @GetMapping
     public Mono<UserDTO> getUserByEmail(@RequestParam String email) {
         return userService.findUserByEmail(email);

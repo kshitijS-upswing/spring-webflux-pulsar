@@ -16,6 +16,8 @@ import java.util.UUID;
 public class ProductServiceImpl implements ProductService {
     private final ProductRepository productRepo;
 
+    // Used for creation of product and addition to list of available products
+    // Should ideally not allow addition of products with same name
     @Override
     public Mono<ProductDTO> createProduct(String productName, int productCost, int productQuantity) {
         return productRepo.existsByName(productName)
@@ -42,6 +44,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
 
+    // Simpel get all function
     @Override
     public Flux<ProductDTO> getAllProducts() {
         return productRepo.findAll()
@@ -53,6 +56,8 @@ public class ProductServiceImpl implements ProductService {
                         .build());
     }
 
+    // Find a product by a particular ID
+    // Self explanatory
     @Override
     public Mono<ProductDTO> findProductById(UUID productId) {
         return productRepo.findById(productId)
@@ -64,6 +69,8 @@ public class ProductServiceImpl implements ProductService {
                         .build());
     }
 
+    // Update the stock of a product using delta values only
+    // Should ideally prevent negative quantity
     @Override
     public Mono<ProductDTO> updateStock(UUID productId, int delta) {
         return productRepo.findById(productId)

@@ -16,6 +16,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepo;
 
+    // Function to create a user
     @Override
     public Mono<UserDTO> createUser(String email) {
         return userRepo.findByEmail(email)
@@ -37,6 +38,7 @@ public class UserServiceImpl implements UserService {
     }
 
 
+    // Function to find a user by UUID
     @Override
     public Mono<UserDTO> findUserById(UUID userId) {
         return userRepo.findById(userId)

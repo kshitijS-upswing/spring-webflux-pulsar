@@ -9,7 +9,6 @@ import com.example.ReactiveDemo.repository.UserRepository;
 import com.example.ReactiveDemo.repository.entities.OrderEntity;
 import com.example.ReactiveDemo.repository.entities.OrderItemsEntity;
 import com.example.ReactiveDemo.repository.entities.OrderStatus;
-import com.example.ReactiveDemo.repository.entities.ProductEntity;
 import com.example.ReactiveDemo.service.implementations.OrderService;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,9 +27,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderItemsRepository orderItemsRepo;
     private final ProductRepository productRepo;
 
-    // --------------------
-    // CREATE ORDER
-    // --------------------
+    // Simple function to create orders for a particular user
     @Override
     public Mono<OrderDTO> createOrder(UUID userId) {
         OrderEntity entity = OrderEntity.builder()
@@ -47,19 +44,14 @@ public class OrderServiceImpl implements OrderService {
                         .build());
     }
 
-
-    // --------------------
-    // GET ORDERS BY USER
-    // --------------------
+    // Self explanatory name, get all orders placed by a user
     @Override
     public Flux<OrderDTO> getOrdersByUserId(UUID userId) {
         return orderRepo.findByUserId(userId)
                 .flatMap(this::toDTOWithProducts);
     }
 
-    // --------------------
-    // GET SINGLE ORDER
-    // --------------------
+    // Self explanatory name, get all orders of a specific user by orderId
     @Override
     public Mono<OrderDTO> getOrderByOrderId(UUID userId, UUID orderId) {
         return orderRepo.findById(orderId)
@@ -68,9 +60,9 @@ public class OrderServiceImpl implements OrderService {
                 .flatMap(this::toDTOWithProducts);
     }
 
-    // --------------------
-    // FINALIZE ORDER
-    // --------------------
+    // Difficult to implement correctly
+    // Function purpose is to finalize an order iff all products in "basket"
+    // are less than available quantity
     @Override
     public Mono<OrderDTO> finalizeOrder(UUID userId, UUID orderId) {
         return orderRepo.findById(orderId)
@@ -82,39 +74,18 @@ public class OrderServiceImpl implements OrderService {
                         return Mono.error(new IllegalStateException("Order already finalized"));
                     }
 
-                    // 1️⃣ Fetch all order items
                     return orderItemsRepo.findByOrderId(order.getId())
-                            // 2️⃣ Validate & reduce stock per item
                             .flatMap(this::validateAndReduceStock)
-                            // 3️⃣ Only after ALL stock updates succeed
                             .then(Mono.defer(() -> {
                                 order.setStatus(OrderStatus.CONFIRMED);
                                 return orderRepo.save(order);
                             }))
-                            // 4️⃣ Return full DTO
                             .flatMap(this::toDTOWithProducts);
                 });
     }
 
 
-
-    // --------------------
-    // VALIDATE STOCK
-    // --------------------
-    private Mono<Void> validateStock(OrderItemsEntity item) {
-        return productRepo.findById(item.getProductId())
-                .flatMap(product -> {
-                    if (product.getAvailableQuantity() < item.getQuantity()) {
-                        return Mono.error(new IllegalStateException("Insufficient stock"));
-                    }
-
-                    product.setAvailableQuantity(
-                            product.getAvailableQuantity() - item.getQuantity()
-                    );
-                    return productRepo.save(product).then();
-                });
-    }
-
+    // Helper function to validate a product and reduce its stock in the DB
     private Mono<Void> validateAndReduceStock(OrderItemsEntity item) {
         return productRepo.findById(item.getProductId())
                 .switchIfEmpty(Mono.error(new IllegalStateException("Product not found")))
@@ -136,15 +107,7 @@ public class OrderServiceImpl implements OrderService {
                 });
     }
 
-
-    private Mono<OrderEntity> updateOrderStatus(OrderEntity order, OrderStatus status) {
-        order.setStatus(status);
-        return orderRepo.save(order);
-    }
-
-    // --------------------
-    // MAPPERS
-    // --------------------
+    // Mapping function to convert an entity to DTO
     private Mono<OrderDTO> toDTOWithProducts(OrderEntity order) {
         return orderItemsRepo.findByOrderId(order.getId())
                 .flatMap(item ->
@@ -165,15 +128,7 @@ public class OrderServiceImpl implements OrderService {
                         .build());
     }
 
-    private OrderDTO toDTOWithoutProducts(OrderEntity order) {
-        return OrderDTO.builder()
-                .orderId(order.getId())
-                .userId(order.getUserId())
-                .status(order.getStatus())
-                .products(List.of())
-                .build();
-    }
-
+    // Function to add a product to a user's basket for a particular order
     @Override
     public Mono<OrderDTO> addProductToOrder(
             UUID userId,

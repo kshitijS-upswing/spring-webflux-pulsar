@@ -18,24 +18,34 @@ import java.util.UUID;
 public class ProductControllerImpl implements ProductController {
     private final ProductService productService;
 
+
+    // CREATE PRODUCT
+    // POST /products (body)
     @Override
     @PostMapping
     public Mono<ProductDTO> createProduct(@RequestBody CreateProductRequest request) {
         return productService.createProduct(request.getProdName(), request.getProdCost(), request.getQuantity());
     }
 
+    // CREATE PRODUCT
+    // GET /products/...
     @Override
     @GetMapping("/{prodId}")
     public Mono<ProductDTO> getProductById(@PathVariable UUID prodId) {
         return productService.findProductById(prodId);
     }
 
+    // CREATE PRODUCT
+    // GET /products
     @Override
     @GetMapping
     public Flux<ProductDTO> getProducts() {
         return productService.getAllProducts();
     }
 
+
+    // CREATE PRODUCT
+    // PATCH /products (body)
     @Override
     @PatchMapping
     public Mono<ProductDTO> updateProductQuantity(@RequestBody UpdateStockRequest request) {
