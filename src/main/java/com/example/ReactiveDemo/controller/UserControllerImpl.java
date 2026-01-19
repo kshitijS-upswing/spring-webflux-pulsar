@@ -26,14 +26,14 @@ public class UserControllerImpl implements UserController {
     }
 
     // GET USER
-    // POST /users/...
+    // GET /users/...
     @GetMapping("/{id}")
     public Mono<UserDTO> getUserById(@PathVariable UUID id) {
         return userService.findUserById(id);
     }
 
     // GET USER
-    // POST /users/...
+    // GET /users/...
     @GetMapping
     public Mono<UserDTO> getUserByEmail(@RequestParam String email) {
         return userService.findUserByEmail(email);

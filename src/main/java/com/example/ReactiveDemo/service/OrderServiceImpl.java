@@ -2,6 +2,8 @@ package com.example.ReactiveDemo.service;
 
 import com.example.ReactiveDemo.controller.DTO.OrderDTO;
 import com.example.ReactiveDemo.controller.DTO.ProductOrderDTO;
+import com.example.ReactiveDemo.pulsarConfig.alerts.LowStockAlertEvent;
+import com.example.ReactiveDemo.pulsarConfig.implementations.StockAlertPublisher;
 import com.example.ReactiveDemo.repository.OrderItemsRepository;
 import com.example.ReactiveDemo.repository.OrderRepository;
 import com.example.ReactiveDemo.repository.ProductRepository;
@@ -22,10 +24,11 @@ import java.util.UUID;
 @AllArgsConstructor
 public class OrderServiceImpl implements OrderService {
 
-    private final UserRepository userRepo;
     private final OrderRepository orderRepo;
     private final OrderItemsRepository orderItemsRepo;
     private final ProductRepository productRepo;
+    private final StockAlertPublisher stockAlertPublisher;
+
 
     // Simple function to create orders for a particular user
     @Override
@@ -76,6 +79,7 @@ public class OrderServiceImpl implements OrderService {
 
                     return orderItemsRepo.findByOrderId(order.getId())
                             .flatMap(this::validateAndReduceStock)
+                            .flatMap(stockAlertPublisher::publishAlert)
                             .then(Mono.defer(() -> {
                                 order.setStatus(OrderStatus.CONFIRMED);
                                 return orderRepo.save(order);
@@ -86,7 +90,7 @@ public class OrderServiceImpl implements OrderService {
 
 
     // Helper function to validate a product and reduce its stock in the DB
-    private Mono<Void> validateAndReduceStock(OrderItemsEntity item) {
+    private Mono<LowStockAlertEvent> validateAndReduceStock(OrderItemsEntity item) {
         return productRepo.findById(item.getProductId())
                 .switchIfEmpty(Mono.error(new IllegalStateException("Product not found")))
                 .flatMap(product -> {
@@ -99,11 +103,18 @@ public class OrderServiceImpl implements OrderService {
                         );
                     }
 
-                    product.setAvailableQuantity(
-                            product.getAvailableQuantity() - item.getQuantity()
-                    );
+                    int remaining = product.getAvailableQuantity() - item.getQuantity();
+                    product.setAvailableQuantity(remaining);
 
-                    return productRepo.save(product).then();
+                    return productRepo.save(product).then(
+                            Mono.justOrEmpty(
+                                    remaining <= 5 ? new LowStockAlertEvent(
+                                            product.getId(),
+                                            product.getName(),
+                                            remaining
+                                    ) : null
+                            )
+                    );
                 });
     }
 
@@ -152,7 +163,6 @@ public class OrderServiceImpl implements OrderService {
                                         .orderId(order.getId())
                                         .productId(product.getId())
                                         .quantity(quantity)
-                                        // 🔒 snapshot price at order time
                                         .priceAtOrderTime(product.getPrice())
                                         .build();
 
